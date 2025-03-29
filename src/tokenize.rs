@@ -30,6 +30,7 @@ fn tokenize_null(char: &Vec<char>, index: &mut usize) -> Result<Token, TokenizeE
         }
         *index += 1;
     }
+    *index -= 1;
     Ok(Token::Null)
 }
 fn tokenize_false(chars: &Vec<char>, index: &mut usize) -> Result<Token, TokenizeError> {
@@ -39,6 +40,7 @@ fn tokenize_false(chars: &Vec<char>, index: &mut usize) -> Result<Token, Tokeniz
         }
         *index += 1;
     }
+    *index -= 1;
     Ok(Token::False)
 }
 
@@ -49,6 +51,7 @@ fn tokenize_true(chars: &Vec<char>, index: &mut usize) -> Result<Token, Tokenize
         }
         *index += 1;
     }
+    *index -= 1;
     Ok(Token::True)
 }
 
@@ -100,7 +103,7 @@ pub fn tokenize(input: String) -> Result<Vec<Token>, TokenizeError> {
     while index < chars.len() {
         let token = make_token(&chars, &mut index)?;
         tokens.push(token);
-        index -= 1;
+        index += 1;
     }
     Ok(tokens)
 }
