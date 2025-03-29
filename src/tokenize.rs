@@ -21,6 +21,9 @@ pub enum Token {
 pub enum TokenizeError {
     UnfinishedLiteralValue,
     ParseNumberError(ParseFloatError),
+    UnclosedQuotes,
+    UnexpectedEof,
+    CharNotRecognized(char),
 }
 
 fn tokenize_null(char: &Vec<char>, index: &mut usize) -> Result<Token, TokenizeError> {
@@ -78,8 +81,38 @@ fn tokenize_float(chars: &Vec<char>, curr_idx: &mut usize) -> Result<Token, Toke
     }
 }
 
+fn tokenize_string(chars: &Vec<char>, index: &mut usize) -> Result<Token, TokenizeError> {
+    let mut string = String::new();
+    let mut is_escaping = false;
+
+    loop {
+        *index += 1;
+        if *index >= chars.len() {
+            return Err(TokenizeError::UnclosedQuotes);
+        }
+
+        let ch = chars[*index];
+        match ch {
+            '"' if !is_escaping => break,
+            '\\' => is_escaping = !is_escaping,
+            _ => is_escaping = false,
+        }
+
+        string.push(ch);
+    }
+    Ok(Token::String(string))
+}
+
+
 fn make_token(chars: &Vec<char>, index: &mut usize) -> Result<Token, TokenizeError> {
-    let ch = chars[*index];
+    let mut ch = chars[*index];
+    while ch.is_ascii_whitespace() {
+        *index += 1;
+        if *index >= chars.len() {
+            return Err(TokenizeError::UnexpectedEof);
+        }
+        ch = chars[*index];
+    }
     let token = match ch {
         '{' => Token::LeftBrace,
         '}' => Token::RightBrace,
@@ -91,6 +124,8 @@ fn make_token(chars: &Vec<char>, index: &mut usize) -> Result<Token, TokenizeErr
         'f' => tokenize_false(chars, index)?,
         't' => tokenize_true(chars, index)?,
          c if c.is_ascii_digit() => tokenize_float(chars, index)?,
+         '"' => tokenize_string(chars, index)?,
+        ch => return Err(TokenizeError::CharNotRecognized(ch)),
         _ => todo!("implement other tokens"),
     };
     Ok(token)
@@ -193,4 +228,26 @@ mod tests {
 
         assert_eq!(actual, expected);
     }
+
+    #[test]
+    fn just_ken() {
+        let input = String::from("\"ken\"");
+        let expected = [Token::String(String::from("ken"))];
+
+        let actual = tokenize(input).unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    // inside of `mod tests`, among the other tests
+    #[test]
+    fn escaped_quote() {
+        let input = String::from(r#""the \" is OK""#);
+        let expected = [Token::String(String::from(r#"the \" is OK"#))];
+
+        let actual = tokenize(input).unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
 }
